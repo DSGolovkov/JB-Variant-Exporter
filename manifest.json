@@ -1,0 +1,15 @@
+{
+  "name": "JB Variant Exporter",
+  "id": "1068100588573264977",
+  "api": "1.0.0",
+  "main": "code.js",
+  "ui": "ui.html",
+  "editorType": [
+    "figma"
+  ],
+  "menu": [
+    {"name": "Export Selected", "command": "export"},
+    {"name": "Combine as Variants", "command": "combine"},
+    {"name": "Generate Name", "command": "generateNames"}
+  ]
+}

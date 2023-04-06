@@ -1,0 +1,44 @@
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.js"></script>
+
+<script>
+    function typedArrayToBuffer(array) {
+        return array.buffer.slice(array.byteOffset, array.byteLength + array.byteOffset)
+    }
+
+    function stopPlugin() {
+        parent.postMessage({pluginMessage: {type: 'stop'}}, '*');
+    }
+
+    let zip = new JSZip();
+
+
+    onmessage = ({data: {pluginMessage}}) => {
+        switch (pluginMessage.type) {
+            case 'export':
+                let varIconName = pluginMessage.varIconName;
+                let varComName = pluginMessage.varComName;
+                let zipDir = pluginMessage.zipDir;
+                let zipConfirm = pluginMessage.zipConfirm;
+                if (varIconName.toLowerCase().includes('dark')) {
+                    varIconName = varComName + '_dark.svg';
+                } else {
+                    varIconName = varComName + '.svg';
+                }
+                let cleanFile = typedArrayToBuffer(pluginMessage.file);
+                let blob = new Blob([cleanFile], {type: 'image/svg+xml'});
+                zip.file(`${zipDir}/${varIconName}`, blob);
+                //console.log(zip);
+
+                if (zipConfirm) {
+                    zip.generateAsync({type: "blob"})
+                        .then(function (blob) {
+                            saveAs(blob, 'Exported Variants');
+                            setTimeout(stopPlugin, 1000);
+                        });
+                }
+                break;
+        }
+    }
+
+</script>
