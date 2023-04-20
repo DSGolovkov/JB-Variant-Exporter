@@ -1,54 +1,61 @@
 figma.showUI(__html__, { visible: false });
-//*** Export Selected *** — need refactoring!
-function checkVariants(varCom) {
-    let varComChecked = [];
-    if (varCom) {
-        for (let i = 0; i < varCom.length; i++) {
-            let innerObjects = varCom[i].findChildren(n => n.type === "COMPONENT");
-            if (innerObjects.length == 2) {
-                if (innerObjects[0].name.replaceAll(" ", "") == "Theme=Light" && innerObjects[1].name.replaceAll(" ", "") == "Theme=Dark") {
-                    varComChecked.push(varCom[i]);
-                }
-                else if (innerObjects[1].name.replaceAll(" ", "") == "Theme=Light" && innerObjects[0].name.replaceAll(" ", "") == "Theme=Dark") {
-                    varComChecked.push(varCom[i]);
-                }
+//*** Export Selected ***
+function checkVariants(components) {
+    const checkedComponents = [];
+    for (let i = 0; i < components.length; i++) {
+        const variants = components[i].findChildren(n => n.type === 'COMPONENT');
+        if (variants.length === 2) {
+            const varName = [];
+            for (let i = 0; i < variants.length; i++) {
+                varName[i] = variants[i].name.replace(/\s+/g, "");
+            }
+            if (varName[0].match('Theme=Light') && varName[1].match('Theme=Dark') ||
+                varName[0].match('Theme=Dark') && varName[1].match('Theme=Light')) {
+                checkedComponents.push(components[i]);
             }
         }
     }
-    return varComChecked;
+    return checkedComponents;
 }
-function exportVariant() {
-    let varCom;
-    let zipConfirm = false;
-    if (figma.currentPage.selection.length > 0) {
-        varCom = figma.currentPage.selection.filter(n => n.type === 'COMPONENT_SET');
-        if (checkVariants(varCom).length > 0) {
-            varCom = checkVariants(varCom);
-            for (let i = 0; i < varCom.length; i++) {
-                let varIcon = varCom[i].findChildren(n => n.type === "COMPONENT");
-                let repName = varCom[i].name.replace(/\s+/g, '');
-                let counter = varCom[i].name.split('/').length - 1;
-                let varComName = varCom[i].name.split('/')[counter].trim();
-                let zipDir = repName.slice(0, -varComName.length - 1);
-                for (let j = 0; j < varIcon.length; j++) {
-                    let varIconName = varIcon[j].name;
-                    varIcon[j].exportAsync({ format: 'SVG' }).then(file => {
-                        if (i === (varCom.length - 1) && j === (varIcon.length - 1)) {
-                            zipConfirm = true;
-                        }
-                        figma.ui.postMessage({ type: 'export', file, varIconName, varComName, zipDir, zipConfirm });
-                    });
-                }
-            }
-        }
-        else {
-            figma.notify("Nothing to export...");
-            figma.closePlugin();
-        }
+function generateIconName(componentName, iconName) {
+    if (iconName.toLowerCase().includes('dark')) {
+        return `${componentName}_dark.svg`;
     }
     else {
-        figma.closePlugin();
-        figma.notify("Nothing to export...");
+        return `${componentName}.svg`;
+    }
+}
+function exportIcons(checkedComponents) {
+    let isReady = false;
+    checkedComponents.forEach(checkedComponent => {
+        const icons = checkedComponent.findChildren(n => n.type === 'COMPONENT');
+        const lastIndexOfSlash = checkedComponent.name.lastIndexOf('/') + 1;
+        const componentName = checkedComponent.name.slice(lastIndexOfSlash, checkedComponent.length);
+        const zipDirectory = checkedComponent.name.includes('/') ? checkedComponent.name.slice(0, lastIndexOfSlash) : "";
+        icons.forEach((icon, index) => {
+            const iconName = generateIconName(componentName, icon.name);
+            icon.exportAsync({ format: 'SVG' }).then(file => {
+                if (index === (icons.length - 1) && checkedComponent === checkedComponents[checkedComponents.length - 1]) {
+                    isReady = true;
+                }
+                figma.ui.postMessage({
+                    type: 'export',
+                    file,
+                    iconName,
+                    zipDirectory,
+                    isReady
+                });
+            });
+        });
+    });
+}
+function exportVariant() {
+    const checkedComponents = checkVariants(figma.currentPage.selection.filter(n => n.type === 'COMPONENT_SET'));
+    if (figma.currentPage.selection.length > 0 && checkedComponents.length > 0) {
+        exportIcons(checkedComponents);
+    }
+    else {
+        stop();
     }
 }
 //*** Combine as Variants ***
@@ -58,14 +65,14 @@ function combineAsVariant() {
     createVariants(getPairs());
 }
 function findComponents() {
-    componentNodes = figma.currentPage.selection.filter(n => n.type === "COMPONENT");
-    let frameNodes = figma.currentPage.selection.filter(n => n.type === "FRAME");
+    componentNodes = figma.currentPage.selection.filter(n => n.type === 'COMPONENT');
+    let frameNodes = figma.currentPage.selection.filter(n => n.type === 'FRAME');
     findInnerComponents(frameNodes);
 }
 function findInnerComponents(frameNodes) {
     for (let i = 0; i < frameNodes.length; i++) {
-        let newComponentNodes = frameNodes[i].findChildren(n => n.type === "COMPONENT");
-        let newFrameNodes = frameNodes[i].findChildren(n => n.type === "FRAME");
+        let newComponentNodes = frameNodes[i].findChildren(n => n.type === 'COMPONENT');
+        let newFrameNodes = frameNodes[i].findChildren(n => n.type === 'FRAME');
         componentNodes = componentNodes.concat(newComponentNodes);
         if (newFrameNodes) {
             findInnerComponents(newFrameNodes);
@@ -75,9 +82,9 @@ function findInnerComponents(frameNodes) {
 function getPairs() {
     let componentPairs = [];
     for (let i = 0; i < componentNodes.length; i++) {
-        if (componentNodes[i].name.toLowerCase().includes("_dark")) {
+        if (componentNodes[i].name.toLowerCase().includes('_dark')) {
             for (let j = 0; j < componentNodes.length; j++) {
-                if (componentNodes[j].name == componentNodes[i].name.replace("_dark", "")) {
+                if (componentNodes[j].name == componentNodes[i].name.replace('_dark', '')) {
                     componentPairs.push([componentNodes[j], componentNodes[i]]);
                     break;
                 }
@@ -95,13 +102,13 @@ function createVariants(componentPairs) {
     sendNotification(componentPairs.length);
 }
 function setProperties(newVariant) {
-    let newChildren = newVariant.findChildren(n => n.type === "COMPONENT");
-    newVariant.name = newChildren[0].name.split("=")[1].trim();
+    let newChildren = newVariant.findChildren(n => n.type === 'COMPONENT');
+    newVariant.name = newChildren[0].name.split('=')[1].trim();
     newVariant.cornerRadius = 0;
     newVariant.strokeWeight = 0;
     newVariant.resizeWithoutConstraints(88, 44);
-    newChildren[0].name = "Theme=Light";
-    newChildren[1].name = "Theme=Dark";
+    newChildren[0].name = 'Theme=Light';
+    newChildren[1].name = 'Theme=Dark';
     switch (newChildren[0].width) {
         case 12:
             newChildren[0].x = 16;
@@ -138,28 +145,22 @@ function drawVariant(newVariant) {
                 { color: { r: 0.11764705926179886, g: 0.12287582457065582, b: 0.13333334028720856, a: 1 }, position: 0.5 },
                 { color: { r: 0.11764705926179886, g: 0.12287582457065582, b: 0.13333334028720856, a: 1 }, position: 1 },
             ],
-            gradientTransform: { 0: { 0: 1, 1: -1.8566250759022296e-8, 2: 9.35088539932849e-9 }, 1: { 0: 2.982353919378511e-8, 1: 1.0073529481887817, 2: -0.007352969143539667 } }
+            gradientTransform: {
+                0: { 0: 1, 1: -1.8566250759022296e-8, 2: 9.35088539932849e-9 },
+                1: { 0: 2.982353919378511e-8, 1: 1.0073529481887817, 2: -0.007352969143539667 }
+            }
         }];
 }
 function sendNotification(numberOfVariants) {
     switch (numberOfVariants) {
         case 0:
-            figma.closePlugin("Nothing to combine");
+            figma.closePlugin('Nothing to combine');
             break;
         case 1:
-            figma.closePlugin(`Variant created`);
+            figma.closePlugin('Variant created');
             break;
         default:
             figma.closePlugin(`${numberOfVariants} variants created`);
-    }
-}
-//*** Generate Names ***
-function generateNames() {
-    let componentSetNodes = figma.currentPage.selection.filter(n => n.type === "COMPONENT_SET");
-    if (componentSetNodes) {
-        for (let i = 0; i < componentSetNodes.length; i++) {
-        }
-        figma.closePlugin("Sorry! Dima is trying to understand how it works...");
     }
 }
 //*** Figma Commands ***
@@ -170,9 +171,11 @@ switch (figma.command) {
     case 'combine':
         combineAsVariant();
         break;
-    case "generateNames":
-        generateNames();
-        break;
+}
+//*** Figma Stop ***
+function stop() {
+    figma.notify('Nothing to export...');
+    figma.closePlugin();
 }
 figma.ui.onmessage = msg => {
     if (msg.type === 'stop') {

@@ -9,7 +9,6 @@
   ],
   "menu": [
     {"name": "Export Selected", "command": "export"},
-    {"name": "Combine as Variants", "command": "combine"},
-    {"name": "Generate Name", "command": "generateNames"}
+    {"name": "Combine as Variants", "command": "combine"}
   ]
 }
