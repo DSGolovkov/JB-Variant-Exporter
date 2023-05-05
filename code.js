@@ -29,9 +29,10 @@ function exportIcons(checkedComponents) {
     let isReady = false;
     checkedComponents.forEach(checkedComponent => {
         const icons = checkedComponent.findChildren(n => n.type === 'COMPONENT');
-        const lastIndexOfSlash = checkedComponent.name.lastIndexOf('/') + 1;
-        const componentName = checkedComponent.name.slice(lastIndexOfSlash, checkedComponent.length);
-        const zipDirectory = checkedComponent.name.includes('/') ? checkedComponent.name.slice(0, lastIndexOfSlash) : "";
+        const clearedName = checkedComponent.name.replace(/\s/g, '');
+        const lastIndexOfSlash = clearedName.lastIndexOf('/') + 1;
+        const componentName = clearedName.slice(lastIndexOfSlash, checkedComponent.length);
+        const zipDirectory = clearedName.includes('/') ? checkedComponent.name.slice(0, lastIndexOfSlash) : "";
         icons.forEach((icon, index) => {
             const iconName = generateIconName(componentName, icon.name);
             icon.exportAsync({ format: 'SVG' }).then(file => {
