@@ -35,10 +35,11 @@ function exportIcons(checkedComponents) {
         const clearedName = checkedComponent.name.replace(/\s/g, '');
         const lastIndexOfSlash = clearedName.lastIndexOf('/') + 1;
         const componentName = clearedName.slice(lastIndexOfSlash, checkedComponent.length);
-        const zipDirectory = clearedName.includes('/') ? checkedComponent.name.slice(0, lastIndexOfSlash) : "";
+        const zipDirectory = clearedName.includes('/') ? checkedComponent.name.slice(0, lastIndexOfSlash + 1) : "";
 
         icons.forEach((icon, index) => {
             const iconName = generateIconName(componentName, icon.name);
+            console.log(iconName);
             icon.exportAsync({format: 'SVG'}).then(file => {
                 if (index === (icons.length - 1) && checkedComponent === checkedComponents[checkedComponents.length - 1]) {
                     isReady = true;
